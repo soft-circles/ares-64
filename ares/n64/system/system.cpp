@@ -297,10 +297,12 @@ auto System::initDebugHooks() -> void {
     res.resize(byteCount * 2);
     char* resPtr = res.begin();
 
-    // For 8/16/32/64-bit reads, perform an actual read like the CPU would do.
+    // For naturally aligned 8/16/32/64-bit reads, perform an actual read like the CPU would do.
     // This makes sure we return the same value the CPU would get wrt to masking.
+    // A misaligned one would read the aligned unit containing it (the CPU itself raises an address
+    // error instead), so it takes the byte-wise paths below.
     u64 value;
-    switch(byteCount) {
+    if((address & (byteCount - 1)) == 0) switch(byteCount) {
       case Byte:
         value = cpu.readDebug<Byte>(address);
         hexByte(resPtr, value);
@@ -375,10 +377,11 @@ auto System::initDebugHooks() -> void {
   GDB::server.hooks.write = [](u64 address, std::vector<u8> data) {
     address = (s32)address;
 
-    // For 8/16/32/64-bit writes, perform an actual write like the CPU would do.
+    // For naturally aligned 8/16/32/64-bit writes, perform an actual write like the CPU would do.
     // This makes sure we write the same value the CPU would write wrt to masking.
+    // A misaligned one would write the aligned unit containing it, so it takes the byte-wise paths below.
     u64 value;
-    switch(data.size()) {
+    if((address & (data.size() - 1)) == 0) switch(data.size()) {
       case Byte:
         value = (u64)data[0];
         cpu.writeDebug<Byte>(address, value);
