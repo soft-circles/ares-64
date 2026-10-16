@@ -1,4 +1,4 @@
-//ares-test: JS-scripted headless test runner for the N64 core (Linux only).
+//ares-test: JS-scripted headless test runner for the N64 core (Linux, BSD and macOS).
 //
 //  ares-test <script.js> [script-args...] [--timeout sec]
 //

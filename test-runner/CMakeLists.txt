@@ -1,12 +1,8 @@
 # ares-test: headless N64 test runner (no SDL/ImGui/ruby, no window, no GPU).
-# Built when ARES_BUILD_HEADLESS is ON; Linux/BSD only. Pairs naturally with
-# -DARES_ENABLE_VULKAN=OFF (the linux-headless preset) so parallel-rdp is not
-# compiled at all, but also builds in a normal tree for local use.
-
-if(NOT (OS_LINUX OR OS_FREEBSD OR OS_OPENBSD))
-  message(WARNING "ares-test is only supported on Linux/BSD; skipping")
-  return()
-endif()
+# Built when ARES_BUILD_HEADLESS is ON, on Linux, BSD and macOS. Pairs naturally
+# with -DARES_ENABLE_VULKAN=OFF (the linux-headless and macos-headless presets)
+# so parallel-rdp is not compiled at all, but also builds in a normal tree for
+# local use.
 
 add_executable(ares-test main.cpp runner.cpp js-host.cpp runner.hpp js-host.hpp)
 
