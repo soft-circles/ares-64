@@ -30,6 +30,7 @@ add_subdirectory(desktop-ui)
 
 if(ARES_BUILD_HEADLESS)
   add_subdirectory(test-runner)
+  add_subdirectory(embed-host)
 endif()
 
 
