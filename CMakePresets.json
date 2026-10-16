@@ -204,6 +204,25 @@
         "ARES_ENABLE_VULKAN": false,
         "ARES_ENABLE_DEBUG_TOOLS": true,
         "ENABLE_CCACHE": false
+        }
+      },
+      {
+      "name": "macos-headless",
+      "displayName": "macOS headless test runner",
+      "description": "ares-test CLI for automated testing: no Vulkan/parallel-rdp, no debug tools",
+      "inherits": ["baseCacheVars"],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build_headless",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": {"type": "STRING", "value": "Release"},
+        "ARES_BUILD_HEADLESS": true,
+        "ARES_ENABLE_VULKAN": false,
+        "ARES_ENABLE_DEBUG_TOOLS": false
       }
     },
     {

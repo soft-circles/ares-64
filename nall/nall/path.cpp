@@ -4,9 +4,27 @@
   #include <shlobj.h>
 #elif defined(PLATFORM_MACOS)
   #include <CoreFoundation/CFBundle.h>
+  #include <mach-o/dyld.h>
 #endif
 
 namespace nall::Path {
+
+#if defined(PLATFORM_MACOS)
+//returns the path of the .app bundle the program runs from, or an empty string.
+//CFBundleGetMainBundle() also returns a bundle for a bare executable, whose URL
+//is then the executable's own directory rather than a .app.
+static auto bundle() -> string {
+  CFBundleRef bundle = CFBundleGetMainBundle();
+  if(!bundle) return {};
+  char path[PATH_MAX] = "";
+  CFURLRef url = CFBundleCopyBundleURL(bundle);
+  bool converted = CFURLGetFileSystemRepresentation(url, true, reinterpret_cast<UInt8*>(path), sizeof(path));
+  CFRelease(url);
+  string result = path;
+  if(!converted || !result.endsWith(".app")) return {};
+  return result;
+}
+#endif
 
 NALL_HEADER_INLINE auto program() -> string {
   #if defined(PLATFORM_WINDOWS)
@@ -17,13 +35,10 @@ NALL_HEADER_INLINE auto program() -> string {
   return Path::real(result);
   #else
   #if defined(PLATFORM_MACOS)
-  if (CFBundleRef bundle = CFBundleGetMainBundle()) {
-    char path[PATH_MAX] = "";
-    CFURLRef url = CFBundleCopyBundleURL(bundle);
-    CFURLGetFileSystemRepresentation(url, true, reinterpret_cast<UInt8*>(path), sizeof(path));
-    CFRelease(url);
-    return Path::real(path);
-  }
+  if(auto path = bundle()) return Path::real(path);
+  char executable[PATH_MAX] = "";
+  uint32_t size = sizeof(executable);
+  if(_NSGetExecutablePath(executable, &size) == 0) return Path::real(executable);
   #endif
   char exe[PATH_MAX];
   ssize_t count = readlink("/proc/self/exe", exe, PATH_MAX - 1);
@@ -40,13 +55,7 @@ NALL_HEADER_INLINE auto program() -> string {
 
 NALL_HEADER_INLINE auto resources() -> string {
   #if defined(PLATFORM_MACOS)
-  if (CFBundleRef bundle = CFBundleGetMainBundle()) {
-    char path[PATH_MAX] = "";
-    CFURLRef url = CFBundleCopyBundleURL(bundle);
-    CFURLGetFileSystemRepresentation(url, true, reinterpret_cast<UInt8*>(path), sizeof(path));
-    CFRelease(url);
-    return string(path).append("/Contents/Resources/");
-  }
+  if(auto path = bundle()) return path.append("/Contents/Resources/");
   #endif
   return program();
 }

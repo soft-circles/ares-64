@@ -8,7 +8,7 @@ include(compilerconfig)
 include(defaults)
 include(helpers)
 
-option(ARES_BUILD_HEADLESS "Build the ares-test headless test runner (Linux/BSD only)" OFF)
+option(ARES_BUILD_HEADLESS "Build the ares-test headless test runner (Linux, BSD and macOS)" OFF)
 
 add_subdirectory(thirdparty)
 
