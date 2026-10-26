@@ -74,6 +74,8 @@ struct Angrylion {
   Implementation* implementation = nullptr;
 
   std::atomic<bool> enable = false;
+  //render with worker threads; read when a ROM loads
+  bool parallel = true;
 };
 
 extern Angrylion angrylion;
