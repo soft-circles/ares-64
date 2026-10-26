@@ -94,7 +94,8 @@ Angrylion::Implementation::Implementation(u8* rdram, u32 rdramSize, u8* dmem) {
   //multithreaded rendering: workers partition the framebuffer by scanline, so this is
   //the same configuration real angrylion frontends ship. num_workers = 0 auto-selects
   //based on core count. n64video_process_list still blocks until the frame is rendered.
-  config.parallel    = true;
+  //A host that runs many emulators, or wants the core count back, turns it off.
+  config.parallel    = angrylion.parallel;
   config.num_workers = 0;
   config.busyloop    = false;
   config.dp.compat   = DP_COMPAT_HIGH;
