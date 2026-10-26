@@ -27,6 +27,10 @@ assertThrows(() => ares.loadAudio("/nonexistent/golden.wav"), "loadAudio of miss
 assertThrows(() => ares.screenshot(), "screenshot() without a ROM should throw");
 assertThrows(() => ares.startAudio(), "startAudio() without a ROM should throw");
 
+// memory access without a ROM must throw
+assertThrows(() => ares.readRdram(0, 4), "readRdram() without a ROM should throw");
+assertThrows(() => ares.writeRdram(0, new ArrayBuffer(4)), "writeRdram() without a ROM should throw");
+
 // controller object shape
 const p1 = ares.controller(1);
 p1.hold("A").release("A").stick(0.5, -0.5).clear();
