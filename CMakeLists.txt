@@ -30,6 +30,7 @@ add_subdirectory(mia)
 if(ARES_BUILD_HEADLESS)
   # the headless runner has no window and bundles no runtime dependencies
   add_subdirectory(test-runner)
+  add_subdirectory(embed-host)
 else()
   add_subdirectory(desktop-ui)
 endif()

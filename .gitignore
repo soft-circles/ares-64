@@ -13,6 +13,7 @@
 !/ruby
 !/scripts
 !/test-runner
+!/embed-host
 !/tests
 !/thirdparty
 !/tools
