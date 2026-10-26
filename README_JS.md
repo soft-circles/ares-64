@@ -118,6 +118,8 @@ const press = (btn) => { p1.hold(btn); ares.waitVI(); p1.release(btn); ares.wait
 | `screenshot()` | Capture the frame currently on screen → **image object**. A pure read: it advances nothing and is allowed inside callbacks |
 | `loadImage(path)` | Load a PNG → **image object** (same shape as a capture) |
 | `depthBuffer(width, height, options?)` | Read the RDP's current depth image → **depth object**. A pure read, allowed inside callbacks |
+| `readRdram(address, length)` | Read guest memory as the CPU sees it, through its data cache → `ArrayBuffer`. `address` is physical or KSEG0/KSEG1. A pure read, allowed inside callbacks |
+| `writeRdram(address, data)` | Write an `ArrayBuffer` into guest memory through the CPU's data cache, so the ROM reads the new bytes even from a cached line. Advances nothing |
 | `startAudio(rate?)` | Begin recording. Default records at the AI output rate the game programmed; pass e.g. `48000` to force a rate |
 | `stopAudio()` | Stop recording → **audio object** |
 | `loadAudio(path)` | Load a 16-bit PCM WAV → **audio object** |

@@ -226,6 +226,37 @@ static auto zDecompress(u16 z) -> u32 {
   return (mantissa << shift) + base;  //0x00000..0x3ffff
 }
 
+//the physical range [address, address + size) after masking, or an error
+static auto rdramRange(u32& address, u32 size) -> string {
+  address &= 0x1fff'ffff;
+  u32 ramSize = ares::Nintendo64::rdram.ram.size;
+  if(address >= ramSize || size > ramSize - address) {
+    return {"RDRAM range 0x", hex(address, 8), "+", size, " is outside the ", ramSize, "-byte RDRAM"};
+  }
+  return "";
+}
+
+auto EmulatorRunner::readRdram(u32 address, u32 size, std::vector<u8>& out) -> string {
+  if(!root) return "no ROM loaded";
+  if(auto error = rdramRange(address, size)) return error;
+  out.resize(size);
+  for(u32 i : range(size)) {
+    u32 physical = address + i;
+    out[i] = ares::Nintendo64::cpu.dcache.readDebug<ares::Nintendo64::Byte>(0x8000'0000 | physical, physical);
+  }
+  return "";
+}
+
+auto EmulatorRunner::writeRdram(u32 address, const u8* data, u32 size) -> string {
+  if(!root) return "no ROM loaded";
+  if(auto error = rdramRange(address, size)) return error;
+  for(u32 i : range(size)) {
+    u32 physical = address + i;
+    ares::Nintendo64::cpu.dcache.writeDebug<ares::Nintendo64::Byte>(0x8000'0000 | physical, physical, data[i]);
+  }
+  return "";
+}
+
 auto EmulatorRunner::depthBuffer(u32 bufferWidth, u32 bufferHeight, u32 x, u32 y, u32 w, u32 h,
                                  DepthResult& out) -> string {
   if(!root) return "no ROM loaded";

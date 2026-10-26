@@ -1051,6 +1051,31 @@ auto js_depthBuffer(JSContext* c, JSValueConst, int argc, JSValueConst* argv) ->
   return obj;
 }
 
+//readRdram(address, length) — guest memory as the CPU sees it, as an ArrayBuffer.
+//A pure read, allowed inside callbacks.
+auto js_readRdram(JSContext* c, JSValueConst, int argc, JSValueConst* argv) -> JSValue {
+  if(argc < 2) return throwError(c, "readRdram(address, length) requires an address and a length");
+  uint32_t address = 0, length = 0;
+  if(JS_ToUint32(c, &address, argv[0]) < 0) return JS_EXCEPTION;
+  if(JS_ToUint32(c, &length, argv[1]) < 0) return JS_EXCEPTION;
+  std::vector<u8> bytes;
+  if(auto error = emulatorRunner.readRdram(address, length, bytes)) return throwError(c, error);
+  return JS_NewArrayBufferCopy(c, bytes.data(), bytes.size());
+}
+
+//writeRdram(address, ArrayBuffer) — writes guest memory through the CPU data
+//cache, so the ROM reads the new bytes even from a line it has cached.
+auto js_writeRdram(JSContext* c, JSValueConst, int argc, JSValueConst* argv) -> JSValue {
+  if(argc < 2) return throwError(c, "writeRdram(address, data) requires an address and an ArrayBuffer");
+  uint32_t address = 0;
+  if(JS_ToUint32(c, &address, argv[0]) < 0) return JS_EXCEPTION;
+  size_t size = 0;
+  u8* bytes = JS_GetArrayBuffer(c, &size, argv[1]);
+  if(!bytes) return JS_EXCEPTION;
+  if(auto error = emulatorRunner.writeRdram(address, bytes, (u32)size)) return throwError(c, error);
+  return JS_UNDEFINED;
+}
+
 auto js_loadImage(JSContext* c, JSValueConst, int argc, JSValueConst* argv) -> JSValue {
   if(argc < 1) return throwError(c, "loadImage(path) requires a path");
   ImagePixels image;
@@ -1242,6 +1267,8 @@ auto jsHostInit(const std::vector<string>& scriptArgs) -> bool {
   setFn(g_ctx, ares, "screenshot", js_screenshot, 0);
   setFn(g_ctx, ares, "loadImage", js_loadImage, 1);
   setFn(g_ctx, ares, "depthBuffer", js_depthBuffer, 3);
+  setFn(g_ctx, ares, "readRdram", js_readRdram, 2);
+  setFn(g_ctx, ares, "writeRdram", js_writeRdram, 2);
   setFn(g_ctx, ares, "startAudio", js_startAudio, 1);
   setFn(g_ctx, ares, "stopAudio", js_stopAudio, 0);
   setFn(g_ctx, ares, "loadAudio", js_loadAudio, 1);

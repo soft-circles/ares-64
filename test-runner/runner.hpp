@@ -81,6 +81,15 @@ struct EmulatorRunner : ares::Platform {
                    DepthResult& out) -> nall::string;
   static constexpr u32 depthMax = 0x3ffff;  //18-bit
 
+  //--- RDRAM ---------------------------------------------------------------
+  //Read and write guest memory the way the CPU sees it through KSEG0: a line the
+  //ROM holds in its data cache is read from and written to the cache, so the ROM
+  //never sees stale bytes (the same path ares-64's GDB server uses). address is
+  //physical, or a KSEG0/KSEG1 address, which is masked to physical. Neither call
+  //advances emulation. Both return an error message or "".
+  auto readRdram(u32 address, u32 size, std::vector<u8>& out) -> nall::string;
+  auto writeRdram(u32 address, const u8* data, u32 size) -> nall::string;
+
   struct AudioRecording {
     u32 frequency = 0;
     std::vector<s16> left, right;
