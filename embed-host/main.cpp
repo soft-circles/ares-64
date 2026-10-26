@@ -19,7 +19,8 @@
 //  16-byte signature "ODIN64-PREVIEW!!", u32 sequence, u32 length, u32 capacity, u32 reserved, then the payload
 //
 //The ROM sets the capacity; ares-embed writes the payload, then its length, then a new sequence, all through the
-//CPU data cache. The payload is opaque here: what it holds is between the editor and the ROM.
+//CPU data cache. The ROM must read the mailbox through KSEG0 and never invalidate its lines, since a write to a cached
+//line lands only in the cache. The payload is opaque here: what it holds is between the editor and the ROM.
 
 #include "../test-runner/runner.hpp"
 
@@ -27,6 +28,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <deque>
@@ -59,6 +61,7 @@ auto readCommands() -> void {
   std::string line;
   char c;
   while(::read(0, &c, 1) == 1) {
+    if(c == '\r') continue;
     if(c != '\n') { line += c; continue; }
     std::lock_guard<std::mutex> lock(commandMutex);
     commands.push_back(line);
@@ -68,21 +71,24 @@ auto readCommands() -> void {
   commands.push_back("quit");
 }
 
-//physical address of the mailbox, or 0. Scans on 16-byte boundaries.
-auto findMailbox() -> u32 {
-  u32 size = ares::Nintendo64::rdram.ram.size;
-  std::vector<u8> block;
-  for(u32 address = 0; address + 16 <= size; address += 16) {
-    if(emulatorRunner.readRdram(address, 16, block)) return 0;
-    if(memcmp(block.data(), MailboxSignature, 16) == 0) return address;
-  }
-  return 0;
-}
-
 auto readWord(u32 address) -> u32 {
   std::vector<u8> bytes;
   if(emulatorRunner.readRdram(address, 4, bytes)) return 0;
   return bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8 | bytes[3];
+}
+
+//physical address of the mailbox, or 0. Scans on 16-byte boundaries, skipping a copy of the signature (such as a
+//string literal) whose capacity is zero or runs past the end of RDRAM.
+auto findMailbox() -> u32 {
+  u32 size = ares::Nintendo64::rdram.ram.size;
+  std::vector<u8> block;
+  for(u32 address = 16; address + MailboxHeader <= size; address += 16) {
+    if(emulatorRunner.readRdram(address, 16, block)) return 0;
+    if(memcmp(block.data(), MailboxSignature, 16) != 0) continue;
+    u32 capacity = readWord(address + MailboxCapacity);
+    if(capacity && capacity <= size - address - MailboxHeader) return address;
+  }
+  return 0;
 }
 
 auto writeWord(u32 address, u32 value) -> void {
@@ -94,8 +100,8 @@ u32 mailbox = 0;
 u32 mailboxSequence = 0;
 
 auto pushScene(const string& path) -> void {
+  if(!file::exists(path)) { print(stderr, "[ares-embed] cannot read ", path, "\n"); return; }
   auto data = file::read(path);
-  if(data.empty()) { print(stderr, "[ares-embed] cannot read ", path, "\n"); return; }
   if(!mailbox) mailbox = findMailbox();
   if(!mailbox) { print(stderr, "[ares-embed] no preview mailbox in RDRAM; is this a preview ROM?\n"); return; }
   u32 capacity = readWord(mailbox + MailboxCapacity);
@@ -120,19 +126,19 @@ auto nall::main(Arguments arguments) -> void {
   string framesPath = arguments.take();
   if(!romPath || !framesPath) { print(stderr, "usage: ares-embed [--parallel] <rom.z64> <frames-file>\n"); ::exit(2); }
 
-  string pattern = {Path::temporary(), "ares-embed-XXXXXX"};
-  if(!::mkdtemp(pattern.get())) { print(stderr, "[ares-embed] cannot create a work directory\n"); ::exit(2); }
-  string workDir = {pattern, "/"};
-  mia::setHomeLocation([workDir]() -> string { return workDir; });
-  mia::setSaveLocation([workDir]() -> string { return {workDir, "Saves/"}; });
-  ares::platform = &emulatorRunner;
-
   int fd = ::open(framesPath.data(), O_RDWR | O_CREAT, 0644);
   if(fd < 0 || ::ftruncate(fd, FileSize) != 0) { print(stderr, "[ares-embed] cannot open ", framesPath, "\n"); ::exit(2); }
   auto shared = (u8*)::mmap(nullptr, FileSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if(shared == MAP_FAILED) { print(stderr, "[ares-embed] cannot map ", framesPath, "\n"); ::exit(2); }
   auto header = (std::atomic<u32>*)shared;
   header[0] = FrameMagic;
+
+  string pattern = {Path::temporary(), "ares-embed-XXXXXX"};
+  if(!::mkdtemp(pattern.get())) { print(stderr, "[ares-embed] cannot create a work directory\n"); ::exit(2); }
+  string workDir = {pattern, "/"};
+  mia::setHomeLocation([workDir]() -> string { return workDir; });
+  mia::setSaveLocation([workDir]() -> string { return {workDir, "Saves/"}; });
+  ares::platform = &emulatorRunner;
 
   #if defined(ANGRYLION)
   ares::Nintendo64::angrylion.parallel = parallel;
@@ -141,7 +147,7 @@ auto nall::main(Arguments arguments) -> void {
   if(auto error = emulatorRunner.loadRom(romPath)) {
     print(stderr, "[ares-embed] ", error, "\n");
     directory::remove(workDir);
-    ::exit(1);
+    ::_exit(1);
   }
   std::thread(readCommands).detach();
 
@@ -160,7 +166,8 @@ auto nall::main(Arguments arguments) -> void {
       if(command == "quit") {
         emulatorRunner.closeRom();
         directory::remove(workDir);
-        ::exit(0);
+        fflush(stdout);
+        ::_exit(0);  //the stdin reader may still hold the command queue, so skip static destructors
       }
       else if(command == "pause") paused = true;
       else if(command == "resume") { paused = false; next = clock::now(); }
@@ -171,11 +178,12 @@ auto nall::main(Arguments arguments) -> void {
 
     emulatorRunner.runFrames(1);
     if(emulatorRunner.screenshot(frame, false) == "" && frame.width <= MaxWidth && frame.height <= MaxHeight) {
-      header[1].store(++sequence);  //odd: writing
-      header[2] = frame.width;
-      header[3] = frame.height;
+      header[1].store(++sequence, std::memory_order_relaxed);  //odd: writing
+      std::atomic_thread_fence(std::memory_order_release);    //keeps the pixels from becoming visible before it
+      header[2].store(frame.width, std::memory_order_relaxed);
+      header[3].store(frame.height, std::memory_order_relaxed);
       memcpy(shared + HeaderSize, frame.rgba.data(), frame.rgba.size());
-      header[1].store(++sequence);  //even: complete
+      header[1].store(++sequence, std::memory_order_release);  //even: complete
     }
 
     windowFrames++;
