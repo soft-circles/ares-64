@@ -20,7 +20,7 @@ auto EmulatorRunner::loadRom(const string& path) -> string {
 
   systemPak = mia::System::create("Nintendo 64");
   if(systemPak->load() != successful) {
-    return "missing PIF firmware (Firmware/Nintendo 64/pif.*.rom next to the executable)";
+    return "failed to load the Nintendo 64 system";
   }
 
   //deterministic, GPU-free configuration

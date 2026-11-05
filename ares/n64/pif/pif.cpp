@@ -3,6 +3,7 @@
 namespace ares::Nintendo64 {
 
 PIF pif;
+#include "boot.cpp"
 #include "hle.cpp"
 #include "io.cpp"
 #include "debugger.cpp"
@@ -31,16 +32,19 @@ auto PIF::main() -> void {
 
 auto PIF::power(bool reset) -> void {
   Thread::reset();
+  romLoaded = false;
 
   if(Model::Aleck64()) {
     string pifrom = "pif.aleck64.rom";
     if (auto fp = cartridge.pak->read(pifrom)) {
       rom.load(fp);
+      romLoaded = true;
     }
   } else {
     string pifrom = Region::PAL() ? "pif.pal.rom" : "pif.ntsc.rom";
     if (auto fp = system.pak->read(pifrom)) {
       rom.load(fp);
+      romLoaded = true;
     }
   }
 

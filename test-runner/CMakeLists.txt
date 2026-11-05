@@ -13,20 +13,6 @@ if(ARES_ENABLE_CHD)
   target_link_libraries(ares-test PRIVATE chdr-static)
 endif()
 
-# (deliberately no ares_configure_executable: its rundir/bin copy would not carry
-# the Firmware/ directory below, producing a binary that can't find the PIF ROMs)
-
-# PIF firmware next to the binary: mia::locate() checks Path::program() first.
-add_custom_command(TARGET ares-test POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory
-    "$<TARGET_FILE_DIR:ares-test>/Firmware/Nintendo 64"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_SOURCE_DIR}/mia/Firmware/Nintendo 64/pif.ntsc.rom"
-    "${CMAKE_SOURCE_DIR}/mia/Firmware/Nintendo 64/pif.pal.rom"
-    "${CMAKE_SOURCE_DIR}/mia/Firmware/Nintendo 64/pif.sm5.rom"
-    "$<TARGET_FILE_DIR:ares-test>/Firmware/Nintendo 64"
-)
-
 # rspq-libdragon.json next to the binary: RSPCapture::autoDetect() checks
 # Path::program() when the JSON isn't found next to the ROM's ELF (used by the
 # ares.rspProfile* / waitRspCommand scripting APIs).

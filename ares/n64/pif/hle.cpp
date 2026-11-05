@@ -259,6 +259,42 @@ auto PIF::challenge() -> void {
   }
 }
 
+auto PIF::initHLE() -> void {
+  n4 hello = cic.readNibble();
+  if (hello.bit(0,1) != 1) {
+    debug(unusual, "[PIF::main] invalid CIC hello message ", hex(hello, 4L));
+    state = Error;
+    return;
+  }
+  if constexpr(Accuracy::PIF::RegionLock) {
+    if(hello.bit(2) != (u32)system.region()) {
+      const char *region[2] = { "NTSC", "PAL" };
+      debug(unusual, "[PIF::main] CIC region mismatch: console is ", region[(u32)system.region()], " but cartridge is ", region[(int)hello.bit(4)]);
+      state = Error;
+      return;
+    }
+  }
+  n4 osinfo = 0;
+  osinfo.bit(2) = 1;              //"version" bit (unknown, always set)
+  osinfo.bit(3) = hello.bit(3);   //64dd
+
+  n4 buf[6];
+  for (auto i: range(6)) buf[i] = cic.readNibble();
+  for (auto i: range(2)) descramble(buf, 6);
+
+  intram.osInfo[0].bit(4,7) = buf[0];
+  intram.osInfo[0].bit(0,3) = buf[1];
+  intram.osInfo[1].bit(4,7) = buf[2];
+  intram.osInfo[1].bit(0,3) = buf[3];
+  intram.osInfo[2].bit(4,7) = buf[4];
+  intram.osInfo[2].bit(0,3) = buf[5];
+
+  intram.osInfo[0].bit(0,3) = osinfo;
+  ramWriteCommand(0x00);
+  memSwapSecrets();  //show osinfo+seeds in external memory
+  state = WaitLockout;
+}
+
 auto PIF::mainHLE() -> void {
   constexpr u32 clocks = 10240 * 8;
   step(clocks);
@@ -270,39 +306,7 @@ auto PIF::mainHLE() -> void {
   }
 
   if(state == Init) {
-    n4 hello = cic.readNibble();
-    if (hello.bit(0,1) != 1) {
-      debug(unusual, "[PIF::main] invalid CIC hello message ", hex(hello, 4L));
-      state = Error;
-      return;
-    }
-    if constexpr(Accuracy::PIF::RegionLock) {
-      if(hello.bit(2) != (u32)system.region()) {
-        const char *region[2] = { "NTSC", "PAL" };
-        debug(unusual, "[PIF::main] CIC region mismatch: console is ", region[(u32)system.region()], " but cartridge is ", region[(int)hello.bit(4)]);
-        state = Error;
-        return;
-      }
-    }
-    n4 osinfo = 0;
-    osinfo.bit(2) = 1;              //"version" bit (unknown, always set)
-    osinfo.bit(3) = hello.bit(3);   //64dd
-
-    n4 buf[6];
-    for (auto i: range(6)) buf[i] = cic.readNibble();
-    for (auto i: range(2)) descramble(buf, 6);
-
-    intram.osInfo[0].bit(4,7) = buf[0];
-    intram.osInfo[0].bit(0,3) = buf[1];
-    intram.osInfo[1].bit(4,7) = buf[2];
-    intram.osInfo[1].bit(0,3) = buf[3];
-    intram.osInfo[2].bit(4,7) = buf[4];
-    intram.osInfo[2].bit(0,3) = buf[5];
-
-    intram.osInfo[0].bit(0,3) = osinfo;
-    ramWriteCommand(0x00);
-    memSwapSecrets();  //show osinfo+seeds in external memory
-    state = WaitLockout;
+    initHLE();
     return;
   }
 

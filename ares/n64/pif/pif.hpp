@@ -8,6 +8,7 @@ struct PIF : Thread, Memory::SI<PIF> {
   Node::Object node;
   Memory::Readable rom;
   Memory::Writable ram;
+  bool romLoaded;
   u32 state;
 
   struct Debugger {
@@ -41,7 +42,11 @@ struct PIF : Thread, Memory::SI<PIF> {
   auto power(bool reset) -> void;
   auto estimateTiming() -> u32;
 
+  //boot.cpp
+  auto bootHLE() -> void;
+
   //hle.cpp
+  auto initHLE() -> void;
   auto mainHLE() -> void;
   auto addressCRC(u16 address) const -> n5;
   auto dataCRC(std::span<const u8> data) const -> n8;
