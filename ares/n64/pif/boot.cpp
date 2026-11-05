@@ -1,6 +1,7 @@
 //IPL1 and IPL2 run from the PIF ROM. Without it, set up the state IPL2 leaves
-//for IPL3: the CIC seeds read and the ROM locked out, the cartridge's first 4KB
-//in DMEM, PI domain 1 timings from its header, and the IPL3 entry registers.
+//for IPL3: the CIC seeds read and the ROM locked out, the first 4KB of the
+//cartridge (or the 64DD IPL ROM) in DMEM, PI domain 1 timings from its
+//header, and the IPL3 entry registers.
 auto PIF::bootHLE() -> void {
   initHLE();
   if(state == Error) return;
@@ -26,8 +27,11 @@ auto PIF::bootHLE() -> void {
   cpu.scc.status.vectorLocation = 0;
   cpu.context.setMode();
 
+  bool fromDD = osinfo.bit(19) && _DD();
   for(u32 address = 0; address < 0x1000; address += 4) {
-    u32 data = address < cartridge.rom.size ? (u32)cartridge.rom.read<Word>(address) : 0;
+    u32 data = 0;
+    if(fromDD && address < dd.iplrom.size) data = dd.iplrom.read<Word>(address);
+    if(!fromDD && address < cartridge.rom.size) data = cartridge.rom.read<Word>(address);
     rsp.dmem.write<Word>(address, data);
   }
 
