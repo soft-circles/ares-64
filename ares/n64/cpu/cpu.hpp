@@ -1335,10 +1335,12 @@ struct CPU : Thread {
       s64 cpuCyclesExc;
       s64 icacheHits, icacheMisses, icacheWritebacks;
       s64 dcacheHits, dcacheMisses, dcacheWritebacks;
+      s64 instructions;
     };
-    s64 data[8];
+    s64 data[9];
     Profile() : data{0} {}
   } profile;
+  static_assert(offsetof(Profile, instructions) + sizeof(s64) == sizeof(Profile::data), "Profile::data must cover every counter");
 
   struct ProfileSlot {
     Profile cpu;
