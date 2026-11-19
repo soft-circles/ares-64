@@ -147,6 +147,7 @@ auto CPU::XPROFREAD(cr64& rd, r64& rt) -> void {
   switch(code) {
     case 0x0000: rt.u64 = prof.cpu.cpuCycles; break;
     case 0x0001: rt.u64 = prof.cpu.cpuCyclesExc; break;
+    case 0x0002: rt.u64 = prof.cpu.instructions; break;
     case 0x0010: rt.u64 = prof.cpu.icacheHits; break;
     case 0x0011: rt.u64 = prof.cpu.icacheMisses; break;
     case 0x0012: rt.u64 = prof.cpu.icacheWritebacks; break;

@@ -387,6 +387,8 @@ auto CPU::Recompiler::block(u64 vaddr, u32 address) -> Block* {
 #define DcacheLineWordsOff offsetof(CPU::DataCache::Line, words[0])
 #define CpuProfileDcacheHitsOff (offsetof(CPU, profile) + offsetof(CPU::Profile, dcacheHits))
 #define ProfileDcacheHitsMem mem(sreg(0), CpuProfileDcacheHitsOff)
+#define CpuProfileInstructionsOff (offsetof(CPU, profile) + offsetof(CPU::Profile, instructions))
+#define ProfileInstructionsMem mem(sreg(0), CpuProfileInstructionsOff)
 #define CpuJitClockTargetMem mem(sreg(0), offsetof(CPU, jitClockTarget))
 
 #if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
@@ -743,6 +745,7 @@ auto CPU::Recompiler::emit(u64 vaddr, u32 address, u64 stateKey) -> Block* {
       deferSlowPathCacheMiss(icacheMiss, ii.address);
     }
 
+    add64(ProfileInstructionsMem, ProfileInstructionsMem, imm(1));
     auto slowPathStart = slowPaths.size();
     // Branch emitters require a ready pipeline window.
     if(info.branch()) setupPipeline();

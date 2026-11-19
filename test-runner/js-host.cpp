@@ -415,6 +415,7 @@ auto js_cpuCacheStats(JSContext* c, JSValueConst, int, JSValueConst*) -> JSValue
   JS_SetPropertyStr(c, obj, "cpuCycles", JS_NewFloat64(c, (double)p.cpuCycles));
   JS_SetPropertyStr(c, obj, "icacheHits", JS_NewFloat64(c, (double)p.icacheHits));
   JS_SetPropertyStr(c, obj, "icacheMisses", JS_NewFloat64(c, (double)p.icacheMisses));
+  JS_SetPropertyStr(c, obj, "instructions", JS_NewFloat64(c, (double)p.instructions));
   return obj;
 }
 

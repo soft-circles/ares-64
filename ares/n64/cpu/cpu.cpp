@@ -192,6 +192,7 @@ auto CPU::instruction() -> bool {
 
   auto data = fetch(access);
   if (!data) return true;
+  profile.instructions++;
   pipeline.begin();
   instructionPrologue(ipu.pc, *data);
   decoderEXECUTE(*data);
